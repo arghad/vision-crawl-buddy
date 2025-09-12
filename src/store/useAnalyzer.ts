@@ -23,7 +23,7 @@ interface AnalyzerStore {
   
   // Actions
   setRootUrl: (url: string) => void;
-  startAnalysis: (url: string) => void;
+  startAnalysis: (url: string) => Promise<void>;
   updateProgress: (progress: Partial<AnalyzerStore['progress']>) => void;
   addPage: (page: PageAnalysis) => void;
   updatePage: (url: string, updates: Partial<PageAnalysis>) => void;
