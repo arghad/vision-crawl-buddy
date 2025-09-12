@@ -53,21 +53,39 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       progress: { current: 0, total: 0, stage: 'crawling' }
     });
 
-    try {
-      // Import supabase client
-      const { supabase } = await import("@/integrations/supabase/client");
-
-      // Step 1: Crawl for pages
-      console.log('Starting crawl for:', url);
-      const { data: crawlData, error: crawlError } = await supabase.functions.invoke('crawler', {
-        body: { rootUrl: url }
-      });
-
-      if (crawlError) {
-        throw new Error(`Crawl failed: ${crawlError.message}`);
+    // Helper to call Edge Functions reliably with fallback to direct fetch
+    const callFunction = async (name: string, body: any) => {
+      const { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } = await import("@/integrations/supabase/client");
+      try {
+        const { data, error } = await supabase.functions.invoke(name, { body });
+        if (!error && data) return data as any;
+        console.warn(`supabase.functions.invoke(${name}) returned error, falling back:`, error?.message);
+      } catch (e) {
+        console.warn(`supabase.functions.invoke(${name}) threw, falling back:`, e);
       }
 
-      const urls = crawlData?.urls || [];
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Function ${name} failed: ${resp.status} ${text}`);
+      }
+      return await resp.json();
+    };
+
+    try {
+      // Step 1: Crawl for pages
+      console.log('Starting crawl for:', url);
+      const crawlData = await callFunction('crawler', { rootUrl: url });
+
+      const urls: { url: string }[] = crawlData?.urls || crawlData?.links?.map((u: string) => ({ url: u })) || [];
       console.log('Found URLs:', urls);
 
       set({
@@ -98,28 +116,12 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
 
           // Take screenshot
           console.log('Taking screenshot for:', pageUrl);
-          const { data: screenshotData, error: screenshotError } = await supabase.functions.invoke('screenshot', {
-            body: { url: pageUrl }
-          });
-
-          if (screenshotError) {
-            throw new Error(`Screenshot failed: ${screenshotError.message}`);
-          }
-
+          const screenshotData = await callFunction('screenshot', { url: pageUrl });
           const screenshot = screenshotData?.screenshot || '';
 
           // Analyze with OpenAI
           console.log('Analyzing:', pageUrl);
-          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze', {
-            body: { 
-              url: pageUrl, 
-              screenshotBase64: screenshot 
-            }
-          });
-
-          if (analysisError) {
-            throw new Error(`Analysis failed: ${analysisError.message}`);
-          }
+          const analysisData = await callFunction('analyze', { url: pageUrl, screenshotBase64: screenshot });
 
           // Update page with results
           set(state => ({
@@ -141,7 +143,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
             }
           }));
 
-        } catch (pageError) {
+        } catch (pageError: any) {
           console.error(`Error processing ${pageUrl}:`, pageError);
           // Update page with error status
           set(state => ({
@@ -149,7 +151,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
               page.url === pageUrl ? {
                 ...page,
                 status: 'error' as const,
-                error: pageError.message
+                error: pageError?.message || 'Unknown error'
               } : page
             )
           }));
