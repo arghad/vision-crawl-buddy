@@ -30,45 +30,8 @@ interface AnalyzerStore {
   reset: () => void;
 }
 
-// Mock data for development
-const mockPages: PageAnalysis[] = [
-  {
-    url: 'https://example.com',
-    screenshot: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop',
-    title: 'Homepage - Example Company',
-    purpose: 'Corporate landing page showcasing services and company information',
-    main_features: ['Hero section with CTA', 'Service overview cards', 'Contact information', 'Navigation menu'],
-    possible_user_actions: ['Browse services', 'Contact company', 'Learn about team', 'View portfolio'],
-    status: 'completed'
-  },
-  {
-    url: 'https://example.com/about',
-    screenshot: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=600&fit=crop',
-    title: 'About Us - Example Company',
-    purpose: 'Company information and team presentation page',
-    main_features: ['Team member profiles', 'Company history', 'Mission statement', 'Office locations'],
-    possible_user_actions: ['View team profiles', 'Read company story', 'Find office locations', 'Contact team members'],
-    status: 'completed'
-  },
-  {
-    url: 'https://example.com/services',
-    screenshot: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=600&fit=crop',
-    title: 'Our Services - Example Company',
-    purpose: 'Detailed service offerings and pricing information',
-    main_features: ['Service descriptions', 'Pricing tables', 'Feature comparisons', 'Call-to-action buttons'],
-    possible_user_actions: ['Compare plans', 'Request quote', 'Start free trial', 'Contact sales'],
-    status: 'completed'
-  },
-  {
-    url: 'https://example.com/contact',
-    screenshot: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop',
-    title: 'Contact Us - Example Company',
-    purpose: 'Contact form and business information page',
-    main_features: ['Contact form', 'Address and hours', 'Map integration', 'Social media links'],
-    possible_user_actions: ['Submit contact form', 'Call phone number', 'Visit office', 'Follow on social media'],
-    status: 'completed'
-  }
-];
+// Removed mock pages; analysis is now fully dynamic
+const mockPages: PageAnalysis[] = [];
 
 export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
   isAnalyzing: false,

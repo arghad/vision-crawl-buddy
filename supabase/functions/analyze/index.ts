@@ -12,9 +12,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestUrl: string | undefined;
+
   try {
     const { url, screenshotBase64 } = await req.json();
-    
+    requestUrl = url;
+
     if (!url || !screenshotBase64) {
       throw new Error('url and screenshotBase64 are required');
     }
@@ -26,17 +29,13 @@ serve(async (req) => {
 
     console.log('Analyzing screenshot for:', url);
 
-    const systemPrompt = `You are analyzing a webpage screenshot. Your task is to identify the page's purpose, main features, and possible user actions based on what you can see in the screenshot.
-
-Return your analysis as a JSON object with this exact structure:
+    const systemPrompt = `Analyze this webpage screenshot at ${url}. Return JSON with exactly these keys:
 {
   "title": "The page title or main heading",
   "purpose": "Brief description of what this page is for",
   "main_features": ["Feature 1", "Feature 2", "Feature 3"],
   "possible_user_actions": ["Action 1", "Action 2", "Action 3"]
-}
-
-Focus on visible UI elements, navigation, forms, buttons, content sections, and interactive components.`;
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -46,25 +45,14 @@ Focus on visible UI elements, navigation, forms, buttons, content sections, and 
       },
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
-        max_completion_tokens: 1000,
+        max_completion_tokens: 800,
         messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
+          { role: 'system', content: systemPrompt },
           {
             role: 'user',
             content: [
-              {
-                type: 'text',
-                text: `Please analyze this webpage screenshot from ${url}:`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: screenshotBase64
-                }
-              }
+              { type: 'text', text: `Analyze this screenshot from ${url}` },
+              { type: 'image_url', image_url: { url: screenshotBase64 } }
             ]
           }
         ]
@@ -78,40 +66,30 @@ Focus on visible UI elements, navigation, forms, buttons, content sections, and 
     }
 
     const data = await response.json();
-    const analysisText = data.choices[0].message.content;
+    const analysisText = data.choices?.[0]?.message?.content ?? '';
 
-    // Parse the JSON response
     let analysis;
     try {
       analysis = JSON.parse(analysisText);
-    } catch (e) {
-      console.error('Failed to parse OpenAI response as JSON:', analysisText);
-      // Fallback analysis
+    } catch {
+      console.warn('OpenAI did not return pure JSON. Wrapping fallback.');
       analysis = {
-        title: `Page: ${new URL(url).pathname}`,
-        purpose: 'Website page with various features and content',
-        main_features: ['Navigation menu', 'Content sections', 'Interactive elements'],
-        possible_user_actions: ['Browse content', 'Navigate to other pages', 'Interact with elements']
+        title: `Page: ${new URL(url).pathname || '/'}`,
+        purpose: 'Automated analysis summary',
+        main_features: [analysisText.slice(0, 120)],
+        possible_user_actions: []
       };
     }
 
-    console.log('Analysis completed for:', url);
-
-    return new Response(
-      JSON.stringify({
-        url,
-        ...analysis
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return new Response(JSON.stringify({ url, ...analysis }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error in analyze function:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        url: url || 'unknown',
+        error: (error as Error).message,
+        url: requestUrl ?? 'unknown',
         title: 'Analysis Error',
         purpose: 'Could not analyze this page',
         main_features: ['Error occurred'],
