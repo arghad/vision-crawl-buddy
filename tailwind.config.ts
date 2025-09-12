@@ -47,6 +47,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        analyzer: {
+          blue: "hsl(var(--analyzer-blue))",
+          "blue-light": "hsl(var(--analyzer-blue-light))",
+          green: "hsl(var(--analyzer-green))",
+          purple: "hsl(var(--analyzer-purple))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -62,6 +68,18 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      backgroundImage: {
+        "analyzer-gradient": "var(--analyzer-gradient)",
+        "analyzer-glass": "var(--analyzer-glass)",
+      },
+      boxShadow: {
+        "analyzer": "var(--analyzer-shadow)",
+        "analyzer-glow": "var(--analyzer-glow)",
+      },
+      transitionTimingFunction: {
+        "smooth": "var(--transition-smooth)",
+        "bounce": "var(--transition-bounce)",
       },
       keyframes: {
         "accordion-down": {
