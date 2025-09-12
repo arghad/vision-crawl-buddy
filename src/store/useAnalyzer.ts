@@ -73,16 +73,16 @@ const mockPages: PageAnalysis[] = [
 export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
   isAnalyzing: false,
   rootUrl: '',
-  pages: mockPages,
+  pages: [],
   progress: {
-    current: 4,
-    total: 4,
-    stage: 'completed'
+    current: 0,
+    total: 0,
+    stage: 'crawling'
   },
 
   setRootUrl: (url) => set({ rootUrl: url }),
 
-  startAnalysis: (url) => {
+  startAnalysis: async (url) => {
     set({
       rootUrl: url,
       isAnalyzing: true,
@@ -90,41 +90,118 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       progress: { current: 0, total: 0, stage: 'crawling' }
     });
 
-    // Mock the analysis process
-    setTimeout(() => {
-      set({ 
-        progress: { current: 0, total: mockPages.length, stage: 'screenshot' },
-        pages: mockPages.map(p => ({ ...p, status: 'pending' as const }))
+    try {
+      // Import supabase client
+      const { supabase } = await import("@/integrations/supabase/client");
+
+      // Step 1: Crawl for pages
+      console.log('Starting crawl for:', url);
+      const { data: crawlData, error: crawlError } = await supabase.functions.invoke('crawler', {
+        body: { rootUrl: url }
       });
 
-      // Simulate progressive analysis
-      mockPages.forEach((page, index) => {
-        setTimeout(() => {
-          const { pages } = get();
-          const updatedPages = [...pages];
-          updatedPages[index] = { ...page, status: 'analyzing' as const };
-          set({ pages: updatedPages });
+      if (crawlError) {
+        throw new Error(`Crawl failed: ${crawlError.message}`);
+      }
 
-          setTimeout(() => {
-            const { pages } = get();
-            const updatedPages = [...pages];
-            updatedPages[index] = { ...page, status: 'completed' as const };
-            set({ 
-              pages: updatedPages,
-              progress: { 
-                current: index + 1, 
-                total: mockPages.length, 
-                stage: index === mockPages.length - 1 ? 'completed' : 'analyzing'
-              }
-            });
+      const urls = crawlData?.urls || [];
+      console.log('Found URLs:', urls);
 
-            if (index === mockPages.length - 1) {
-              set({ isAnalyzing: false });
+      set({
+        progress: { current: 0, total: urls.length, stage: 'screenshot' },
+        pages: urls.map((item: any) => ({
+          url: item.url,
+          screenshot: '',
+          title: '',
+          purpose: '',
+          main_features: [],
+          possible_user_actions: [],
+          status: 'pending' as const
+        }))
+      });
+
+      // Step 2: Process each URL (screenshot + analyze)
+      for (let i = 0; i < urls.length; i++) {
+        const urlData = urls[i];
+        const pageUrl = urlData.url;
+
+        try {
+          // Update status to analyzing
+          set(state => ({
+            pages: state.pages.map(page => 
+              page.url === pageUrl ? { ...page, status: 'analyzing' as const } : page
+            )
+          }));
+
+          // Take screenshot
+          console.log('Taking screenshot for:', pageUrl);
+          const { data: screenshotData, error: screenshotError } = await supabase.functions.invoke('screenshot', {
+            body: { url: pageUrl }
+          });
+
+          if (screenshotError) {
+            throw new Error(`Screenshot failed: ${screenshotError.message}`);
+          }
+
+          const screenshot = screenshotData?.screenshot || '';
+
+          // Analyze with OpenAI
+          console.log('Analyzing:', pageUrl);
+          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze', {
+            body: { 
+              url: pageUrl, 
+              screenshotBase64: screenshot 
             }
-          }, 1000);
-        }, index * 500);
+          });
+
+          if (analysisError) {
+            throw new Error(`Analysis failed: ${analysisError.message}`);
+          }
+
+          // Update page with results
+          set(state => ({
+            pages: state.pages.map(page => 
+              page.url === pageUrl ? {
+                ...page,
+                screenshot: screenshot,
+                title: analysisData?.title || `Page: ${pageUrl}`,
+                purpose: analysisData?.purpose || 'Website page',
+                main_features: analysisData?.main_features || [],
+                possible_user_actions: analysisData?.possible_user_actions || [],
+                status: 'completed' as const
+              } : page
+            ),
+            progress: {
+              current: i + 1,
+              total: urls.length,
+              stage: i === urls.length - 1 ? 'completed' : 'analyzing'
+            }
+          }));
+
+        } catch (pageError) {
+          console.error(`Error processing ${pageUrl}:`, pageError);
+          // Update page with error status
+          set(state => ({
+            pages: state.pages.map(page => 
+              page.url === pageUrl ? {
+                ...page,
+                status: 'error' as const,
+                error: pageError.message
+              } : page
+            )
+          }));
+        }
+      }
+
+      set({ isAnalyzing: false });
+
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      set({ 
+        isAnalyzing: false,
+        progress: { current: 0, total: 0, stage: 'completed' }
       });
-    }, 1500);
+    }
   },
 
   updateProgress: (progress) => set((state) => ({
