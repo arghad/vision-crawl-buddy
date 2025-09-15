@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to add timeout to fetch requests
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 30000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -21,8 +39,8 @@ serve(async (req) => {
 
     console.log('Crawling URL:', rootUrl);
 
-    // Fetch the HTML content
-    const response = await fetch(rootUrl);
+    // Fetch the HTML content with timeout
+    const response = await fetchWithTimeout(rootUrl, {}, 15000);
     if (!response.ok) {
       throw new Error(`Failed to fetch ${rootUrl}: ${response.status}`);
     }

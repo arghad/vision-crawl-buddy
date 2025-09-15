@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to add timeout to fetch requests
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 30000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -39,10 +57,12 @@ serve(async (req) => {
     screenshotUrl.searchParams.set('cache', 'true');
     screenshotUrl.searchParams.set('cache_ttl', '2592000');
 
-    const response = await fetch(screenshotUrl.toString());
+    const response = await fetchWithTimeout(screenshotUrl.toString(), {}, 45000);
     
     if (!response.ok) {
-      throw new Error(`Screenshot API failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('ScreenshotOne API error:', errorText);
+      throw new Error(`Screenshot API failed: ${response.status} - ${errorText}`);
     }
 
     // Convert to base64

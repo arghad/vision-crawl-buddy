@@ -53,31 +53,70 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       progress: { current: 0, total: 0, stage: 'crawling' }
     });
 
-    // Helper to call Edge Functions reliably with fallback to direct fetch
-    const callFunction = async (name: string, body: any) => {
+    // Helper to call Edge Functions with retry logic and proper error handling
+    const callFunction = async (name: string, body: any, retries = 2) => {
       const { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } = await import("@/integrations/supabase/client");
-      try {
-        const { data, error } = await supabase.functions.invoke(name, { body });
-        if (!error && data) return data as any;
-        console.warn(`supabase.functions.invoke(${name}) returned error, falling back:`, error?.message);
-      } catch (e) {
-        console.warn(`supabase.functions.invoke(${name}) threw, falling back:`, e);
+      
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          // Try using supabase client first
+          const { data, error } = await supabase.functions.invoke(name, { 
+            body,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (!error && data) {
+            console.log(`${name} function succeeded via supabase client`);
+            return data as any;
+          }
+          
+          if (error) {
+            console.warn(`supabase.functions.invoke(${name}) error:`, error.message);
+            if (attempt === retries) throw new Error(error.message);
+          }
+        } catch (e: any) {
+          console.warn(`supabase.functions.invoke(${name}) attempt ${attempt + 1} failed:`, e.message);
+          if (attempt === retries) {
+            // Last attempt - try direct fetch as fallback
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 60000);
+              
+              const resp = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal,
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(`Function ${name} failed: ${resp.status} ${text}`);
+              }
+              
+              const result = await resp.json();
+              console.log(`${name} function succeeded via direct fetch`);
+              return result;
+            } catch (fetchError: any) {
+              console.error(`Final attempt for ${name} failed:`, fetchError.message);
+              throw new Error(`Function ${name} failed after all retries: ${fetchError.message}`);
+            }
+          }
+        }
+        
+        // Wait before retry
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        }
       }
-
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify(body),
-      });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`Function ${name} failed: ${resp.status} ${text}`);
-      }
-      return await resp.json();
     };
 
     try {
