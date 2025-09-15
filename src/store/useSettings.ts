@@ -49,7 +49,7 @@ export const useSettings = create<SettingsStore>((set, get) => ({
 
   hasValidScreenshotOneKey: () => {
     const key = get().screenshotOneApiKey;
-    return key.length > 0 && key.startsWith('s1_');
+    return key.length > 0 && /^[a-zA-Z0-9]+$/.test(key);
   },
 
   hasValidOpenaiKey: () => {

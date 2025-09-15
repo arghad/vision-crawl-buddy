@@ -89,29 +89,29 @@ const Settings = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center space-x-2">
-                    <span>ScreenshotOne API Key</span>
+                    <span>ScreenshotOne Access Key</span>
                     {hasValidScreenshotOneKey() && <CheckCircle2 className="w-4 h-4 text-analyzer-green" />}
                     {!hasValidScreenshotOneKey() && screenshotOneApiKey && <AlertTriangle className="w-4 h-4 text-destructive" />}
                   </CardTitle>
                   <CardDescription>
-                    Required for taking website screenshots. Get your API key from ScreenshotOne.
+                    Required for taking website screenshots. Get your Access Key from ScreenshotOne dashboard.
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
-                  <a href="https://screenshotone.com/api-key" target="_blank" rel="noopener noreferrer">
-                    Get API Key <ExternalLink className="w-3 h-3 ml-1" />
+                  <a href="https://screenshotone.com/dashboard/api-keys" target="_blank" rel="noopener noreferrer">
+                    Get Access Key <ExternalLink className="w-3 h-3 ml-1" />
                   </a>
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="screenshot-key">API Key</Label>
+                <Label htmlFor="screenshot-key">Access Key</Label>
                 <div className="relative">
                   <Input
                     id="screenshot-key"
                     type={showScreenshotKey ? "text" : "password"}
-                    placeholder="s1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    placeholder="bg8Rs8eabCiV"
                     value={localScreenshotKey}
                     onChange={(e) => setLocalScreenshotKey(e.target.value)}
                     className="pr-10"
@@ -126,8 +126,8 @@ const Settings = () => {
                     {showScreenshotKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                 </div>
-                {localScreenshotKey && !localScreenshotKey.startsWith('s1_') && (
-                  <p className="text-sm text-destructive">API key should start with "s1_"</p>
+                {localScreenshotKey && !/^[a-zA-Z0-9]+$/.test(localScreenshotKey) && (
+                  <p className="text-sm text-destructive">Access key should contain only letters and numbers</p>
                 )}
               </div>
               {screenshotOneApiKey && (
