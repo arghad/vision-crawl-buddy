@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useSettings } from './useSettings';
 
 export interface PageAnalysis {
   url: string;
@@ -46,12 +47,24 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
   setRootUrl: (url) => set({ rootUrl: url }),
 
   startAnalysis: async (url) => {
-    set({
-      rootUrl: url,
-      isAnalyzing: true,
-      pages: [],
-      progress: { current: 0, total: 0, stage: 'crawling' }
-    });
+    set({ isAnalyzing: true, rootUrl: url, pages: [], progress: { current: 0, total: 0, stage: 'crawling' } });
+
+    // Get API keys from settings
+    const settings = useSettings.getState();
+    const { screenshotOneApiKey, openaiApiKey, hasValidScreenshotOneKey, hasValidOpenaiKey } = settings;
+
+    // Check if required API keys are available
+    if (!hasValidScreenshotOneKey() || !hasValidOpenaiKey()) {
+      set({ 
+        isAnalyzing: false,
+        progress: { 
+          current: 0, 
+          total: 0, 
+          stage: 'completed'
+        }
+      });
+      return;
+    }
 
     // Helper to call Edge Functions with retry logic and proper error handling
     const callFunction = async (name: string, body: any, retries = 2) => {
@@ -155,12 +168,19 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
 
           // Take screenshot
           console.log('Taking screenshot for:', pageUrl);
-          const screenshotData = await callFunction('screenshot', { url: pageUrl });
+          const screenshotData = await callFunction('screenshot', { 
+            url: pageUrl, 
+            screenshotOneApiKey 
+          });
           const screenshot = screenshotData?.screenshot || '';
 
           // Analyze with OpenAI
           console.log('Analyzing:', pageUrl);
-          const analysisData = await callFunction('analyze', { url: pageUrl, screenshotBase64: screenshot });
+          const analysisData = await callFunction('analyze', { 
+            url: pageUrl, 
+            screenshotBase64: screenshot,
+            openaiApiKey
+          });
 
           // Update page with results
           set(state => ({

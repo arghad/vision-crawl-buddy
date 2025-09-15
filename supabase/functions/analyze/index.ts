@@ -33,16 +33,17 @@ serve(async (req) => {
   let requestUrl: string | undefined;
 
   try {
-    const { url, screenshotBase64 } = await req.json();
+    const { url, screenshotBase64, openaiApiKey } = await req.json();
     requestUrl = url;
 
     if (!url || !screenshotBase64) {
       throw new Error('url and screenshotBase64 are required');
     }
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    // Use provided API key or fallback to environment variable
+    const apiKey = openaiApiKey || Deno.env.get('OPENAI_API_KEY');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not provided or configured');
     }
 
     console.log('Analyzing screenshot for:', url);
@@ -58,7 +59,7 @@ serve(async (req) => {
     const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

@@ -1,10 +1,27 @@
-import { Zap, Brain, Globe } from "lucide-react";
+import { Zap, Brain, Globe, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { useSettings } from "@/store/useSettings";
 
 export function AnalyzerHeader() {
+  const { hasValidScreenshotOneKey, hasValidOpenaiKey } = useSettings();
+  const hasRequiredKeys = hasValidScreenshotOneKey() && hasValidOpenaiKey();
+  
   return (
     <header className="relative overflow-hidden border-b border-border bg-card">
       <div className="absolute inset-0 bg-analyzer-gradient opacity-5" />
       <div className="container relative mx-auto px-6 py-12">
+        <div className="absolute top-4 right-6">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/settings">
+              <Settings className="w-4 h-4 mr-2" />
+              API Settings
+              {!hasRequiredKeys && (
+                <span className="ml-2 w-2 h-2 bg-destructive rounded-full" />
+              )}
+            </Link>
+          </Button>
+        </div>
         <div className="flex items-center justify-center space-x-3 mb-4">
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 border border-primary/20">
             <Brain className="w-6 h-6 text-primary" />

@@ -31,22 +31,23 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
+    const { url, screenshotOneApiKey } = await req.json();
     
     if (!url) {
       throw new Error('url is required');
     }
 
-    const screenshotOneApiKey = Deno.env.get('SCREENSHOTONE_API_KEY');
-    if (!screenshotOneApiKey) {
-      throw new Error('SCREENSHOTONE_API_KEY not configured');
+    // Use provided API key or fallback to environment variable
+    const apiKey = screenshotOneApiKey || Deno.env.get('SCREENSHOTONE_API_KEY');
+    if (!apiKey) {
+      throw new Error('ScreenshotOne API key not provided or configured');
     }
 
     console.log('Taking screenshot of:', url);
 
     // ScreenshotOne API call
     const screenshotUrl = new URL('https://api.screenshotone.com/take');
-    screenshotUrl.searchParams.set('access_key', screenshotOneApiKey);
+    screenshotUrl.searchParams.set('access_key', apiKey);
     screenshotUrl.searchParams.set('url', url);
     screenshotUrl.searchParams.set('format', 'png');
     screenshotUrl.searchParams.set('viewport_width', '1200');
