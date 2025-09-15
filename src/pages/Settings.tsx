@@ -116,36 +116,31 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Edge Functions Status</p>
+                <div>
+                  <h3 className="font-medium">Backend Connection</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Test connectivity to Supabase Edge Functions
+                  </p>
                   {lastTestResult && (
-                    <p className="text-xs text-muted-foreground">
-                      Last tested: {new Date(lastTestResult.timestamp).toLocaleTimeString()}
-                      {lastTestResult.success && lastTestResult.latency && (
-                        <span className="text-analyzer-green"> • {lastTestResult.latency}ms</span>
-                      )}
-                      {!lastTestResult.success && (
-                        <span className="text-destructive"> • Failed</span>
-                      )}
-                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        lastTestResult.success ? 'bg-accent' : 'bg-destructive'
+                      }`} />
+                      <span className="text-xs text-muted-foreground">
+                        Last checked: {new Date(lastTestResult.timestamp).toLocaleTimeString()}
+                        {lastTestResult.latency && ` (${lastTestResult.latency}ms)`}
+                      </span>
+                    </div>
                   )}
                 </div>
-                <Button 
+                <Button
                   onClick={handleConnectivityTest}
                   disabled={isTestingConnectivity}
                   variant="outline"
+                  className="flex items-center gap-2"
                 >
-                  {isTestingConnectivity ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Testing...
-                    </>
-                  ) : (
-                    <>
-                      <Wifi className="w-4 h-4 mr-2" />
-                      Test Connection
-                    </>
-                  )}
+                  <Wifi className={`h-4 w-4 ${isTestingConnectivity ? 'animate-pulse' : ''}`} />
+                  {isTestingConnectivity ? 'Testing...' : 'Test Connection'}
                 </Button>
               </div>
               {lastTestResult && !lastTestResult.success && (

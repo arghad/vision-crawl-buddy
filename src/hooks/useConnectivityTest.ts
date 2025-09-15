@@ -6,6 +6,7 @@ interface ConnectivityResult {
   latency?: number;
   error?: string;
   timestamp: string;
+  status?: 'healthy' | 'error' | 'unknown';
 }
 
 export function useConnectivityTest() {
@@ -36,7 +37,8 @@ export function useConnectivityTest() {
       const result: ConnectivityResult = {
         success: true,
         latency,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        status: data?.status || 'healthy'
       };
       setLastTestResult(result);
       return result;

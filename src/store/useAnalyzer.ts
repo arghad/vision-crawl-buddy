@@ -20,6 +20,7 @@ interface AnalyzerStore {
     current: number;
     total: number;
     stage: 'crawling' | 'screenshot' | 'analyzing' | 'completed' | 'failed';
+    error?: string | null;
   };
   
   // Actions
@@ -47,7 +48,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
   setRootUrl: (url) => set({ rootUrl: url }),
 
   startAnalysis: async (url) => {
-    set({ isAnalyzing: true, rootUrl: url, pages: [], progress: { current: 0, total: 0, stage: 'crawling' } });
+    set({ isAnalyzing: true, rootUrl: url, pages: [], progress: { current: 0, total: 0, stage: 'crawling', error: null } });
 
     // Get API keys from settings
     const settings = useSettings.getState();
@@ -60,7 +61,8 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
         progress: { 
           current: 0, 
           total: 0, 
-          stage: 'completed'
+          stage: 'completed',
+          error: null
         }
       });
       return;
@@ -132,6 +134,28 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       }
     };
 
+    // Preflight connectivity check
+    console.log('ANALYZER: Starting preflight connectivity check...');
+    try {
+      const healthResult = await callFunction('health', {});
+      if (!healthResult.status || healthResult.status !== 'healthy') {
+        throw new Error('Health check failed');
+      }
+      console.log('ANALYZER: Connectivity check passed');
+    } catch (error) {
+      console.error('EDGE_CONNECTIVITY_RESET: Cannot reach Supabase Functions', error);
+      set({
+        isAnalyzing: false,
+        progress: {
+          current: 0,
+          total: 0,
+          stage: 'failed',
+          error: 'EDGE_CONNECTIVITY_RESET: Cannot reach Supabase Functions from this network. This is usually caused by VPN, firewall, or corporate network restrictions.',
+        },
+      });
+      return;
+    }
+
     try {
       // Step 1: Crawl for pages
       console.log('Starting crawl for:', url);
@@ -141,7 +165,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       console.log('Found URLs:', urls);
 
       set({
-        progress: { current: 0, total: urls.length, stage: 'screenshot' },
+        progress: { current: 0, total: urls.length, stage: 'screenshot', error: null },
         pages: urls.map((item: any) => ({
           url: item.url,
           screenshot: '',
@@ -198,7 +222,8 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
             progress: {
               current: i + 1,
               total: urls.length,
-              stage: i === urls.length - 1 ? 'completed' : 'analyzing'
+              stage: i === urls.length - 1 ? 'completed' : 'analyzing',
+              error: null
             }
           }));
 
@@ -223,7 +248,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       console.error('Analysis failed:', error);
       set({ 
         isAnalyzing: false,
-        progress: { current: 0, total: 0, stage: 'failed' }
+        progress: { current: 0, total: 0, stage: 'failed', error: (error as Error)?.message || 'Analysis failed' }
       });
     }
   },
@@ -246,6 +271,6 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
     isAnalyzing: false,
     rootUrl: '',
     pages: [],
-    progress: { current: 0, total: 0, stage: 'crawling' }
+    progress: { current: 0, total: 0, stage: 'crawling', error: null }
   })
 }));
