@@ -129,30 +129,50 @@ const Settings = () => {
                       <span className="text-xs text-muted-foreground">
                         Last checked: {new Date(lastTestResult.timestamp).toLocaleTimeString()}
                         {lastTestResult.latency && ` (${lastTestResult.latency}ms)`}
+                        {lastTestResult.method && ` via ${lastTestResult.method === 'supabase-client' ? 'Supabase Client' : 'Direct Fetch'}`}
                       </span>
                     </div>
                   )}
                 </div>
-                <Button
-                  onClick={handleConnectivityTest}
-                  disabled={isTestingConnectivity}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Wifi className={`h-4 w-4 ${isTestingConnectivity ? 'animate-pulse' : ''}`} />
-                  {isTestingConnectivity ? 'Testing...' : 'Test Connection'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleConnectivityTest}
+                    disabled={isTestingConnectivity}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Wifi className={`h-4 w-4 ${isTestingConnectivity ? 'animate-pulse' : ''}`} />
+                    {isTestingConnectivity ? 'Testing...' : 'Test Connection'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open('https://prnzuoladzdixamlxmrv.functions.supabase.co/health', '_blank')}
+                    className="px-3"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {lastTestResult && !lastTestResult.success && (
                 <Alert className="border-destructive/20 bg-destructive/10">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <AlertDescription className="text-destructive/90">
                     <strong>Connection failed:</strong> {lastTestResult.error}
-                    <br />
-                    <span className="text-sm">
-                      Try checking your network connection, VPN settings, or corporate firewall. 
-                      If the issue persists, contact your network administrator.
-                    </span>
+                    {lastTestResult.networkIssue && (
+                      <>
+                        <br />
+                        <div className="mt-2 text-sm">
+                          <strong>Troubleshooting steps:</strong>
+                          <ul className="list-disc list-inside mt-1 space-y-1 ml-4">
+                            <li>Disable VPN/proxy and try again</li>
+                            <li>Check corporate firewall settings</li>
+                            <li>Try from a different network</li>
+                            <li>Contact IT to allowlist *.supabase.co</li>
+                          </ul>
+                        </div>
+                      </>
+                    )}
                   </AlertDescription>
                 </Alert>
               )}
@@ -160,7 +180,8 @@ const Settings = () => {
                 <Alert className="border-analyzer-green/20 bg-analyzer-green/10">
                   <CheckCircle2 className="h-4 w-4 text-analyzer-green" />
                   <AlertDescription className="text-analyzer-green/90">
-                    <strong>Connection successful!</strong> Edge Functions are reachable.
+                    <strong>Connection successful!</strong> Edge Functions are reachable via {lastTestResult.method === 'supabase-client' ? 'Supabase Client' : 'Direct Fetch'}.
+                    {lastTestResult.latency && ` Response time: ${lastTestResult.latency}ms`}
                   </AlertDescription>
                 </Alert>
               )}

@@ -1,5 +1,8 @@
 project_id = "prnzuoladzdixamlxmrv"
 
+[functions.health]
+verify_jwt = false
+
 [functions.crawler]
 verify_jwt = false
 
