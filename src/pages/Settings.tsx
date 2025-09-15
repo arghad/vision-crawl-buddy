@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useSettings } from '@/store/useSettings';
+import { useConnectivityTest } from '@/hooks/useConnectivityTest';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Settings as SettingsIcon, Eye, EyeOff, ExternalLink, Shield, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Eye, EyeOff, ExternalLink, Shield, AlertTriangle, CheckCircle2, Wifi, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,6 +22,8 @@ const Settings = () => {
     hasValidScreenshotOneKey,
     hasValidOpenaiKey,
   } = useSettings();
+  
+  const { testConnectivity, isTestingConnectivity, lastTestResult } = useConnectivityTest();
 
   const [showScreenshotKey, setShowScreenshotKey] = useState(false);
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
@@ -44,6 +47,23 @@ const Settings = () => {
       title: "Settings cleared",
       description: "All API keys have been removed from this browser session.",
     });
+  };
+
+  const handleConnectivityTest = async () => {
+    const result = await testConnectivity();
+    
+    if (result.success) {
+      toast({
+        title: "Connection successful",
+        description: `Connected to Supabase Edge Functions in ${result.latency}ms`,
+      });
+    } else {
+      toast({
+        title: "Connection failed",
+        description: result.error || "Unable to reach Supabase Edge Functions",
+        variant: "destructive",
+      });
+    }
   };
 
   const maskKey = (key: string) => {
@@ -83,6 +103,75 @@ const Settings = () => {
         </Alert>
 
         <div className="grid gap-6">
+          {/* Connectivity Test */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Wifi className="w-5 h-5 text-primary" />
+                <span>Connection Test</span>
+              </CardTitle>
+              <CardDescription>
+                Test connectivity to Supabase Edge Functions to diagnose connection issues.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Edge Functions Status</p>
+                  {lastTestResult && (
+                    <p className="text-xs text-muted-foreground">
+                      Last tested: {new Date(lastTestResult.timestamp).toLocaleTimeString()}
+                      {lastTestResult.success && lastTestResult.latency && (
+                        <span className="text-analyzer-green"> • {lastTestResult.latency}ms</span>
+                      )}
+                      {!lastTestResult.success && (
+                        <span className="text-destructive"> • Failed</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+                <Button 
+                  onClick={handleConnectivityTest}
+                  disabled={isTestingConnectivity}
+                  variant="outline"
+                >
+                  {isTestingConnectivity ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-4 h-4 mr-2" />
+                      Test Connection
+                    </>
+                  )}
+                </Button>
+              </div>
+              {lastTestResult && !lastTestResult.success && (
+                <Alert className="border-destructive/20 bg-destructive/10">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive/90">
+                    <strong>Connection failed:</strong> {lastTestResult.error}
+                    <br />
+                    <span className="text-sm">
+                      Try checking your network connection, VPN settings, or corporate firewall. 
+                      If the issue persists, contact your network administrator.
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {lastTestResult && lastTestResult.success && (
+                <Alert className="border-analyzer-green/20 bg-analyzer-green/10">
+                  <CheckCircle2 className="h-4 w-4 text-analyzer-green" />
+                  <AlertDescription className="text-analyzer-green/90">
+                    <strong>Connection successful!</strong> Edge Functions are reachable.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
           {/* ScreenshotOne API Key */}
           <Card>
             <CardHeader>

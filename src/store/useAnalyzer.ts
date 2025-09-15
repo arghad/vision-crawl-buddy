@@ -19,7 +19,7 @@ interface AnalyzerStore {
   progress: {
     current: number;
     total: number;
-    stage: 'crawling' | 'screenshot' | 'analyzing' | 'completed';
+    stage: 'crawling' | 'screenshot' | 'analyzing' | 'completed' | 'failed';
   };
   
   // Actions
@@ -223,7 +223,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
       console.error('Analysis failed:', error);
       set({ 
         isAnalyzing: false,
-        progress: { current: 0, total: 0, stage: 'completed' }
+        progress: { current: 0, total: 0, stage: 'failed' }
       });
     }
   },

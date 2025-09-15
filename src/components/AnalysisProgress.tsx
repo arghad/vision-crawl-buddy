@@ -1,25 +1,27 @@
 import { useAnalyzer } from "@/store/useAnalyzer";
 import { Progress } from "@/components/ui/progress";
-import { Globe, Camera, Brain, CheckCircle } from "lucide-react";
+import { Globe, Camera, Brain, CheckCircle, AlertTriangle } from "lucide-react";
 
 const stageIcons = {
   crawling: Globe,
   screenshot: Camera,
   analyzing: Brain,
-  completed: CheckCircle
-};
+  completed: CheckCircle,
+  failed: AlertTriangle
+} as const;
 
 const stageLabels = {
   crawling: 'Discovering pages...',
   screenshot: 'Capturing screenshots...',
   analyzing: 'Analyzing with AI...',
-  completed: 'Analysis complete!'
-};
+  completed: 'Analysis complete!',
+  failed: 'Analysis failed'
+} as const;
 
 export function AnalysisProgress() {
   const { isAnalyzing, progress } = useAnalyzer();
 
-  if (!isAnalyzing && progress.stage !== 'completed') {
+  if (!isAnalyzing && progress.stage !== 'completed' && progress.stage !== 'failed') {
     return null;
   }
 
@@ -34,6 +36,8 @@ export function AnalysisProgress() {
             <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
               progress.stage === 'completed' 
                 ? 'bg-analyzer-green/10 border-analyzer-green text-analyzer-green' 
+                : progress.stage === 'failed'
+                ? 'bg-destructive/10 border-destructive text-destructive'
                 : 'bg-primary/10 border-primary text-primary'
             }`}>
               <Icon className="w-5 h-5" />
