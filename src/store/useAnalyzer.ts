@@ -55,7 +55,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
 
     // Helper to call Edge Functions with retry logic and proper error handling
     const callFunction = async (name: string, body: any, retries = 2) => {
-      const { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } = await import("@/integrations/supabase/client");
+      const { supabase, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_FUNCTIONS_URL } = await import("@/integrations/supabase/client");
       
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -84,7 +84,7 @@ export const useAnalyzer = create<AnalyzerStore>((set, get) => ({
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), 60000);
               
-              const resp = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+              const resp = await fetch(`${SUPABASE_FUNCTIONS_URL}/${name}`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
