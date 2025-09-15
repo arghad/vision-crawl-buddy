@@ -16,8 +16,10 @@ const Settings = () => {
   const {
     screenshotOneApiKey,
     openaiApiKey,
+    functionsBaseUrl,
     setScreenshotOneApiKey,
     setOpenaiApiKey,
+    setFunctionsBaseUrl,
     clearSettings,
     hasValidScreenshotOneKey,
     hasValidOpenaiKey,
@@ -29,13 +31,20 @@ const Settings = () => {
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [localScreenshotKey, setLocalScreenshotKey] = useState(screenshotOneApiKey);
   const [localOpenaiKey, setLocalOpenaiKey] = useState(openaiApiKey);
+  const [localFunctionsUrl, setLocalFunctionsUrl] = useState(functionsBaseUrl);
+  const defaultFunctionsBase = 'https://prnzuoladzdixamlxmrv.functions.supabase.co';
+  const baseForLink = (localFunctionsUrl && localFunctionsUrl.trim().length > 0
+    ? localFunctionsUrl.trim().replace(/\/+$/, '')
+    : defaultFunctionsBase);
+  const healthUrl = `${baseForLink}/health`;
 
   const handleSave = () => {
     setScreenshotOneApiKey(localScreenshotKey);
     setOpenaiApiKey(localOpenaiKey);
+    setFunctionsBaseUrl(localFunctionsUrl);
     toast({
       title: "Settings saved",
-      description: "Your API keys have been saved to this browser session.",
+      description: "Your API keys and Functions base URL have been saved to this browser session.",
     });
   };
 

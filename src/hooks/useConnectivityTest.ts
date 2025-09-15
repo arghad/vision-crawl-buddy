@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSettings } from '@/store/useSettings';
 
 interface ConnectivityResult {
   success: boolean;
@@ -9,12 +10,13 @@ interface ConnectivityResult {
   status?: 'healthy' | 'error' | 'unknown';
   method?: 'supabase-client' | 'direct-fetch';
   networkIssue?: boolean;
+  url?: string;
 }
 
 export function useConnectivityTest() {
   const [isTestingConnectivity, setIsTestingConnectivity] = useState(false);
   const [lastTestResult, setLastTestResult] = useState<ConnectivityResult | null>(null);
-
+  const { functionsBaseUrl } = useSettings();
   const testConnectivity = async (): Promise<ConnectivityResult> => {
     setIsTestingConnectivity(true);
     const startTime = Date.now();
@@ -51,14 +53,14 @@ export function useConnectivityTest() {
   };
 
   const tryDirectFetch = async (originalStartTime: number): Promise<ConnectivityResult> => {
+    const base = (functionsBaseUrl && functionsBaseUrl.trim().length > 0)
+      ? functionsBaseUrl.trim().replace(/\/+$/, '')
+      : 'https://prnzuoladzdixamlxmrv.functions.supabase.co';
+    const healthUrl = `${base}/health`;
     try {
       const directStartTime = Date.now();
-      const response = await fetch('https://prnzuoladzdixamlxmrv.functions.supabase.co/health', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
+      const response = await fetch(healthUrl, {
+        method: 'GET',
       });
       
       const latency = Date.now() - directStartTime;
@@ -74,7 +76,8 @@ export function useConnectivityTest() {
         latency,
         timestamp: new Date().toISOString(),
         status: data?.status || 'healthy',
-        method: 'direct-fetch'
+        method: 'direct-fetch',
+        url: healthUrl,
       };
       setLastTestResult(result);
       return result;
@@ -93,7 +96,8 @@ export function useConnectivityTest() {
           ? 'Network blocked (VPN/firewall/proxy may be blocking Supabase Functions)'
           : error instanceof Error ? error.message : 'Unknown connection error',
         timestamp: new Date().toISOString(),
-        networkIssue: isNetworkError
+        networkIssue: isNetworkError,
+        url: healthUrl,
       };
       setLastTestResult(result);
       return result;
